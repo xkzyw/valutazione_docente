@@ -1,4 +1,6 @@
 {
     "port": 3000,
-    "host": "localhost"
+    "host": "localhost",
+    "secret": "12345",
+    "expireTime": 30000
 }

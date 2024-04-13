@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <link href="./bootstrap/css/bootstrap.min.css" rel="stylesheet"></link>
+    <script>
+        let token = sessionStorage.getItem("vdToken");
+        let classe = null;
+        let smail = null;
+        let dmail = null;
+        let vmat = null;
+        let d = [];
+
+        fetch("http://localhost:3000/get_docenti", {
+            method: "POST",
+            body: JSON.stringify({
+                token: token
+            }),
+            headers: {
+                "Content-Type": "application/json"
+            }
+        }).then((content) => content.json())
+        .then((data) => {
+            if(data.messaggio){
+                alert(data.messaggio);
+                window.location.replace("./index.html")
+                return
+            }
+            let body = document.querySelector("body");
+            smail = data.email;
+            classe = data.classe;
+
+            body.innerHTML = "";
+            body.innerHTML = `<center class="my-4"><h3>${data.classe} - ${data.email}</h3></center>`;
+            data.docenti.forEach((val) => {
+                let mat_options = "";
+
+                val.materie.forEach((mat) => {
+                    mat_options += `<option>${mat}</option>`
+                });
+
+                body.innerHTML = body.innerHTML + `<div class="d-flex my-4 justify-content-around">
+                    <div class="col-3">${val.nome} ${val.cognome}</div>
+                    <div class="col-3">${val.mailDocente}</div>
+                    <div class="col-3">
+                        <select name='mat-${val.mailDocente}' class="text-center">
+                            ${mat_options}
+                        </select>
+                    </div>
+                    <div class="col-3 text-center">
+                        <input type="button" onclick="valuta('${val.mailDocente}')" value="valuta">    
+                    </div>
+                </div>`;
+            })
+        });
+
+        function valuta(mail) {
+            let body = document.querySelector("body");
+            dmail = mail;
+
+            vmat = document.querySelector(`[name='mat-${dmail}']`).selectedOptions[0].value;
+
+            fetch("http://localhost:3000/get_domande").then((content) => content.json())
+                .then((data) => {
+                    body.innerHTML = "";
+                    body.innerHTML = `<center class="my-4"><h3>${classe} - ${smail}</h3></center>
+                            <div><center>Docente valutato: ${mail}</center></div>`;
+                    data.forEach((val) => {
+                        d.push(val.id);
+                        body.innerHTML = body.innerHTML + `<div class="d-flex my-4 justify-content-around">
+                            <div class="col-9">${val.domanda}</div>
+                            <div class="col-3 text-center">
+                                <select name="${val.id}">
+                                    <option>0</option>
+                                    <option>1</option>
+                                    <option>2</option>
+                                    <option>3</option>
+                                    <option>4</option>
+                                    <option>5</option>
+                                    <option>6</option>
+                                    <option>7</option>
+                                    <option>8</option>
+                                    <option>9</option>
+                                    <option>10</option>
+                                </select>
+                            </div>
+                        </div>`;
+                    });
+
+                    body.innerHTML += "<center><input type='button' value='Valuta' onclick='invia()'/></center>"
+                });
+        }
+
+        function invia(){
+            let valutazioni = [];
+            d.forEach((val) => {
+                valutazioni.push({
+                    idDomanda: val,
+                    voto: parseInt(document.querySelector(`[name='${val}']`).selectedOptions[0].value)
+                })
+            });
+
+        fetch("http://localhost:3000/valuta_docente", {
+            method: "POST",
+            body: JSON.stringify({
+                token: token,
+                mailDocente: dmail,
+                mailStudente: smail,
+                materie: [
+                    {
+                        nomeMateria: vmat,
+                        valutazioni: valutazioni
+                    }
+                ]
+            }),
+            headers: { 
+                "Content-Type": "application/json"
+            }
+        }).then((content) => content.json())
+        .then((data) => {
+            alert(data.messaggio);
+            window.location.replace("./index.html");
+        });
+
+        }
+    </script>
+</head>
+<body>
+    
+</body>
+</html>

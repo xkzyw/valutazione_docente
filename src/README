@@ -1,20 +1,6 @@
-Dipedenze:
-	- express
-	- mongodb
-Prerequisiti:
-	- Installato mongodb
-	- Avere una database di nome "ValutazioniDocenti"
-	- Creare collection nel database "ValutazioniDocenti":
-		- "Voti"
-		- "Docenti"
-		- "Studenti"
-		- "Token"
-		- "Domande"
+- Utenti:
+	- Nome
+	- Cognome
+	- plesso
 
-Funzionalità:
-	- token.js:
-		Modulo per la creazione del token
-		
-	- main.js:
-		Server che rispechia le requisiti del vecchio documentazione
-		(senza parte dell'admin)
+- Formato json valuta_docente

@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<body>
+    <script>
+        let token = sessionStorage.getItem("vdToken");
+        fetch("http://localhost:3000/admin_console", {
+                method: "POST",
+                body: JSON.stringify({
+                    token: token
+                }),
+                headers: {
+                    "Content-Type": "application/json"
+                }
+            }).then((val) => {
+                if(val.status == 404){
+                    document.querySelector("body").innerHTML ="Not found"
+                }else{
+                    return val.json();
+                }
+            }).then((data) => {
+                if(data){
+                    let body = document.querySelector("body");
+                    data.forEach((val) => {
+                    body.innerHTML += `<input type='button' value='${val.button}' onclick='req("${val.urlEndpoint}")'/>`
+                })
+                }
+            });
+
+        function req(url){
+            fetch("http://localhost:3000/" + url, {
+                method: "POST",
+                body: JSON.stringify({
+                    token: token
+                }),
+                headers: {
+                    "Content-Type": "application/json"
+                }
+            })
+            .then((data) => data.json())
+            .then((val) => {
+                alert(val.messaggio);
+                window.location.reload()
+            })
+        }
+    </script>
+</body>
+</html>

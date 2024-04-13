@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <link href="./bootstrap/css/bootstrap.min.css" rel="stylesheet"></link>
+
+</head>
+<body>
+    <script>
+        let token = sessionStorage.getItem("vdToken");
+        let content = null;
+
+        fetch("http://localhost:3000/view_docente", {
+            method: "POST",
+            body: JSON.stringify({
+                token: token
+            }),
+            headers: {
+                "Content-Type": "application/json"
+            }
+        })
+        .then((val) => val.json())
+        .then((data) => {
+            content = data;
+            matChanged();
+        });
+
+        function matChanged(){
+            let body = document.querySelector("body");
+
+            body.innerHTML = "";
+            body.innerHTML = `<center class="my-4"><h3>${content.email}</h3></center>`;
+            
+            let materie_option = ""
+            content.materie.forEach((mat) => {
+                materie_option += `<option>${mat.nome}</option>`
+            });
+
+            body.innerHTML += `<center>
+                <select id='mat-sel' onchange='matChanged()'>
+                    ${materie_option}   
+                </select>
+            </center>`
+
+            let opt = document.querySelector("#mat-sel").selectedOptions[0].value;
+
+            let mat = content.materie.filter((m) => m.nome == opt)[0];
+
+            body.innerHTML = body.innerHTML + `<div class="d-flex my-4 justify-content-between">
+                    <div class="col-11"><h3>Descrizione</h3></div>
+                    <div class="col-1"><h3>Media</h3></div>
+                </div>`;
+
+            mat.valutazioni.forEach((val) => {
+                body.innerHTML = body.innerHTML + `<div class="d-flex my-4 justify-content-between">
+                    <div class="col-11">${val.domanda}</div>
+                    <div class="col-1">${val.voto}</div>
+                </div>`;
+            })
+        }
+    </script>
+</body>
+</html>
