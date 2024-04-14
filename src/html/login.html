@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Document</title>
+    <script src="./config.js"></script>
 </head>
 <body>
     <input type="email" id="email"/> </br>
@@ -15,7 +16,7 @@
             let mail = document.querySelector("#email").value;
             let psw = document.querySelector("#password").value;
 
-            fetch("http://localhost:3000/login", {
+            fetch(`http://${IP}:${PORT}/login`, {
                 method: "POST",
                 body: JSON.stringify({
                     user: mail,
@@ -27,7 +28,7 @@
             }).then((val) => {
                 return val.json();
             }).then((data) => {
-                sessionStorage.setItem("vdToken", data.token);
+                sessionStorage.setItem(TOKEN_NAME, data.token);
                 window.location.replace("./index.html")
             });
         }

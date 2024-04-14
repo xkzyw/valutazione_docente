@@ -4,11 +4,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Document</title>
+    <script src="./config.js"></script>
 </head>
 <body>
     <script>
-        let token = sessionStorage.getItem("vdToken");
-        fetch("http://localhost:3000/admin_console", {
+        let token = sessionStorage.getItem(TOKEN_NAME);
+
+        fetch(`http://${ip}:${PORT}/admin_console`, {
                 method: "POST",
                 body: JSON.stringify({
                     token: token
@@ -32,7 +34,7 @@
             });
 
         function req(url){
-            fetch("http://localhost:3000/" + url, {
+            fetch(`http://${IP}:${PORT}/` + url, {
                 method: "POST",
                 body: JSON.stringify({
                     token: token

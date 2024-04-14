@@ -9,10 +9,10 @@
 </head>
 <body>
     <script>
-        let token = sessionStorage.getItem("vdToken");
+        let token = sessionStorage.getItem(TOKEN_NAME);
         let content = null;
 
-        fetch("http://localhost:3000/view_docente", {
+        fetch(`http://${IP}:${PORT}/view_docente`, {
             method: "POST",
             body: JSON.stringify({
                 token: token
