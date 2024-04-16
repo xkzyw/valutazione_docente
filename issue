@@ -1,0 +1,13 @@
+- Utenti:
+	- Nome
+	- Cognome
+
+- Formato json valuta_docente
+
+- login:
+	- get_docente -> get_decenti_classe
+
+- valuta docente:
+	- materia
+
+- Carica credenziali
