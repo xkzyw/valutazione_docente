@@ -1,0 +1,42 @@
+L'intero applicazione valutazione docente è stato sviluppato
+e testato sotto il sistema operativo Linux, se presente qualche
+problema negli altri sistema operativa, può segnalare allo sviluppatore
+attraverso il mail: <zhou.chenghuan@denina.it>
+
+In questa cartella si può trovare sia il server che
+un client di prova per l'app valutazione docente.
+
+L'intera file del server è stato commentato.
+
+Il server si trova nel file src/main.js.
+
+Prima di avviare il server, si deve installare le dipedenze 
+attraverso il commando:
+	npm install
+
+Dopodiche' si può avviare il server con il seguente comando:
+	node src/main.js
+
+Mentre il client di prova si trova nella cartella src/html.
+Si consiglia di avviare il client dal file index.html.
+Per avviare il client è possibile aprire direttamente il file html
+con un browser.
+
+Dato che il server fornisce i servizi attraverso degli API, qualunque
+client che volessi connettere al server e usare i suoi servizi
+basti adeguare il proprio client con il documentazione dell'app
+
+ https://docs.google.com/document/d/1ySkzP0mpPCGAccFcyQBn-z4m--sm0oGkdG2L_5vLW0w/edit?usp=sharing
+
+Tutte le funzionalità del server sono elencate nella documentzione soprastante,
+eccetto alcuni modifiche:
+	- API /carica_studenti e /carica_docenti sono stati inseriti in un
+		unico API chiamato /carica_dati, che oltre a caricare i dati di 
+		studenti e docenti mette anche i credenziali di prova nel database
+	- API /start_stop_valutazioni viene diviso in /start e /stop,
+	- API /admin_console quindi restituisce url dell'endpoit di /carica_dati
+		e /start o /stop a seconda di votazione sia aperta o non
+	- Viene implementato anche la votazione per la materia del docente
+		che ha più di un insegnamento di materia per classe, sia docente
+		che admin e studente possono vedere interfaccia diversa per materie
+		diverse
