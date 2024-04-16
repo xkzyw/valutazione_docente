@@ -1,3 +1,13 @@
+/**
+ *  This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
+ *  as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
+ *
+ *  This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty
+ *  of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+ *
+ *  You should have received a copy of the GNU General Public License along with this program. If not, see <https://www.gnu.org/licenses/>. 
+ */
+
 const express = require("express");
 const { MongoClient } = require("mongodb");
 const config = require("./config.json");
@@ -57,7 +67,7 @@ app.post("/login", (req, res) => {
             });
 
             if(!cred){
-                res.json({message: "Utente non esistente o password errato"}).end();
+                res.json({messaggio: "Utente non esistente o password errato"}).end();
                 return;
             }
 
@@ -78,18 +88,22 @@ app.post("/login", (req, res) => {
             if(utente){
                 if(utente.tipo == "A"){
                     body.tipo = "A";
+                    result.urlEndpoint = "admin_console";
                 }else if(utente.tipo == "S"){
                     // result.cognome = studente.cognome;
                     // result.nome = studente.nome;
                     body.tipo = "S";
+                    result.urlEndpoint = "get_docenti_classe";
                 }else if(utente.tipo == "D"){
                     body.tipo = "D";
+                    result.urlEndpoint = "view_docente"
                 }
             }else{
-                res.json({message: "Utente non esistente o password errato"}).end();
+                res.json({messaggio: "Utente non esistente o password errato"}).end();
                 return;
             }
 
+            // Inserire email nel token
             body.email = result.email;
 
             // Creao un nuovo token
@@ -105,7 +119,7 @@ app.post("/login", (req, res) => {
 
 });
 
-app.post("/get_docenti", (req, res) => {
+app.post("/get_docenti_classe", (req, res) => {
     let token = req.body.token;
 
     // Ottengo dati dal token
@@ -117,7 +131,8 @@ app.post("/get_docenti", (req, res) => {
 
         // Se non è un studente
         if(tipo != "S"){
-            res.json({message: "Riservato allo studente"}).end();
+            res.json({messaggio: "Riservato allo studente"}).end();
+            return;
         }
 
         mongodb.connect()
@@ -157,19 +172,21 @@ app.post("/get_docenti", (req, res) => {
 
                     // Per ogni docenti dello studente
                     for(let doc of lista_docenti){
+                        // Materie valutati dal studenti al docente
+                        let mat_val = null;
+                        
                         // Se esiste nella lista dei docenti valutati
-                        let found = false;
                         // Per ogni docente valutato dallo studente
                         for(let val_doc of studente.docenti_valutati){
                             // Se il docente è nella lista dei docenti valutati
                             if(doc.email === val_doc.email){
-                                found = true;
+                                mat_val = val_doc.materie_valutati;
                                 break;
                             }
                         }
 
                         // Se non viene trovato 
-                        if(!found){
+                        if(!mat_val){
 
                             // Materia in cui insegna nella classe dello studente
                             let mat = doc.classi_materie.filter((val) => {
@@ -177,13 +194,25 @@ app.post("/get_docenti", (req, res) => {
                             })[0];
 
                             non_val.push({nome: doc.nome, cognome: doc.cognome, mailDocente: doc.email, materie: mat.materie});
+                        }else{
+                            // Materia in cui insegna nella classe dello studente
+                            let mat = doc.classi_materie.filter((val) => {
+                                return val.nome == studente.classe
+                            })[0];
+
+                            // Ottenere materie che non sono stati votati dallo studente
+                            let diff = mat.materie.filter((element) => !mat_val.includes(element));
+
+                            // Se esiste almeno uno materie che non è stato votato
+                            if(diff.length != 0){
+                                non_val.push({nome: doc.nome, cognome: doc.cognome, mailDocente: doc.email, materie: diff});
+                            }
                         }
+
                     }
 
+                    res.json({classe: studente.classe, docenti: non_val, email: data.email}).end();
                     mongoclient.close();
-
-                    res.json({classe: studente.classe, docenti: non_val, email: data.email});
-                    res.end();
                 }
             });
     }else{
@@ -192,7 +221,26 @@ app.post("/get_docenti", (req, res) => {
     }
 });
 
-app.get("/get_domande", (req, res) => {
+app.post("/get_domande", (req, res) => {
+    let token = req.body.token;
+
+    // Ottengo dati dal token
+    let data = verifyToken(token);
+
+    // Se token valido
+    if(data){
+        let {tipo} = data;
+
+        // Se non è un studente
+        if(tipo != "S"){
+            res.json({messaggio: "Riservato allo studente"}).end();
+        }
+
+    }else{
+        res.json({messaggio: "Token scaduto o non valido"}).end();
+        return;
+    }
+
     mongodb.connect()
         .then(async (mongoclient) => {
             let domande_collection = mongoclient.db().collection("Domande");
@@ -223,12 +271,13 @@ app.post("/valuta_docente", (req, res) => {
             let voti_collection = mongoclient.db().collection("Voti");
             let utenti_collection = mongoclient.db().collection("Utenti");
 
-            // Parametro per la ricerda del docente interessato
+            // Parametro per la ricerca del docente interessato
             let doc_param = {email: valutazione.mailDocente}
 
-            // Array di materie valutati con le relative valutazioni
-            let materie = valutazione.materie;
+            // Materia valutato con le relative valutazioni
+            let materia = valutazione.materia;
 
+            // docente da valutare
             let docente = await voti_collection.findOne(doc_param);
 
             // Se non esiste un voto per tale docente inserire un nuovo
@@ -242,70 +291,101 @@ app.post("/valuta_docente", (req, res) => {
                 docente = await voti_collection.findOne(doc_param);
             }
 
-            // Per ogni materia valutato inviato dal client 
-            materie.forEach((valuta_materia) => {
-                // Se è già votato nel database tale materia  
-                let mat = docente.materie.find((materia_valutata) => materia_valutata.nome == valuta_materia.nomeMateria);
-                if(mat){
-                    // Per ogni domanda valutato
-                    valuta_materia.valutazioni.forEach((valuta_domanda) => {
-                        // Verifico se esiste già la domanda
-                        if(mat.valutazioni.find((valutazione_db) => valutazione_db.id_domanda == valuta_domanda.idDomanda)){
-                            voti_collection.updateOne(doc_param, {"$push":{
-                                "materie.$[mat].valutazioni.$[val].voto": 
-                                    valuta_domanda.voto
-                            }}, {
-                                arrayFilters:[
-                                    {"mat.nome": valuta_materia.nomeMateria},
-                                    {"val.id_domanda": valuta_domanda.idDomanda}
-                                ]
-                            });
-                        }else{
-                            // Non esiste nel db la domanda da valutare, quindi lo aggiungo
-                            voti_collection.updateOne(doc_param, {"$push":{
-                                "materie.$[mat].valutazioni": 
-                                    {
-                                        id_domanda: valuta_domanda.idDomanda,
-                                        voto: [
-                                            valuta_domanda.voto
-                                        ]
-                                    }
-                            }}, {
-                                arrayFilters:[
-                                    {"mat.nome": valuta_materia.nomeMateria},
-                                ]
-                            });
-                        }
-                    })
-                }else{
-                    // Non esiste la meteria nel db del docente
-                    
-                    // Creao array delle votazioni
-                    let tmp = [];
+            // Se è già votato nel database tale materia  
+            let mat = docente.materie.find((materia_valutata) => materia_valutata.nome == materia.nomeMateria);
 
-                    valuta_materia.valutazioni.forEach((valuta_domanda) => {
-                        tmp.push({
-                            id_domanda: valuta_domanda.idDomanda,
-                            voto: [
+            if(mat){
+                // Per ogni domanda valutato
+                materia.valutazioni.forEach((valuta_domanda) => {
+                    // Verifico se esiste già la domanda
+                    if(mat.valutazioni.find((valutazione_db) => valutazione_db.id_domanda == valuta_domanda.idDomanda)){
+                        voti_collection.updateOne(doc_param, {"$push":{
+                            "materie.$[mat].valutazioni.$[val].voto": 
                                 valuta_domanda.voto
+                        }}, {
+                            arrayFilters:[
+                                {"mat.nome": materia.nomeMateria}, 
+                                {"val.id_domanda": valuta_domanda.idDomanda}
                             ]
-                        })
-                    });
+                        });
+                    }else{
+                        // Non esiste nel db la domanda da valutare, quindi lo aggiungo
+                        voti_collection.updateOne(doc_param, {"$push":{
+                            "materie.$[mat].valutazioni": 
+                                {
+                                    id_domanda: valuta_domanda.idDomanda,
+                                    voto: [
+                                        valuta_domanda.voto
+                                    ]
+                                }
+                        }}, {
+                            arrayFilters:[
+                                {"mat.nome": materia.nomeMateria},
+                            ]
+                        });
+                    }
+                })
+            }else{
+                // Non esiste la meteria nel db del docente
 
-                    voti_collection.updateOne(doc_param, {"$push":{
-                        "materie": 
-                            {
-                                nome: valuta_materia.nomeMateria,
-                                valutazioni:tmp
+                // Creao array delle votazioni
+                let tmp = [];
+
+                materia.valutazioni.forEach((valuta_domanda) => {
+                    tmp.push({
+                        id_domanda: valuta_domanda.idDomanda,
+                        voto: [
+                            valuta_domanda.voto
+                        ]
+                    })
+                });
+
+                voti_collection.updateOne(doc_param, {"$push":{
+                    "materie": 
+                        {
+                            nome: materia.nomeMateria,
+                            valutazioni: tmp
+                        }
+                }});
+            }
+
+            // Lo studente che sta votando
+            let studente = await utenti_collection.findOne({email: data.email});
+
+            // Ottengo il stesso docente che sta valutando dal db
+            let doc_val = studente.docenti_valutati.find((val) => val.email == valutazione.mailDocente);
+
+            // Se non esiste, significa che non ha mai votato questo docente
+            if(!doc_val){
+                // Creo un nuovo oggetto docente, tenendo la traccia di quale materia e quale docente ha votato lo studente
+                utenti_collection.updateOne({email: data.email}, {$push: {
+                    docenti_valutati: {
+                        email: valutazione.mailDocente,
+                        materie_valutati: [materia.nomeMateria]
+                    }
+                }});
+            }else{
+                // Se esiste il docente in docenti già valutati dallo studente
+
+                // Se la materia che sta valutando è già valutato dallo studente
+                let mat = doc_val.materie_valutati.find((val) => val == materia);
+
+                if(mat){
+                    res.json({messaggio: "Materia del docente già valutato"}).end();
+                    return;
+                }else{
+                    // Aggiornare la lista dei docenti valutati con la sua materia
+                    utenti_collection.updateOne({email: data.email}, {$push: {
+                        "docenti_valutati.$[doc].materie_valutati": materia.nomeMateria
+                    }}, {
+                        arrayFilters: [
+                         {
+                                "doc.email": valutazione.mailDocente
                             }
-                    }});
-                }
-            });
-
-            // Aggiornare la lista dei docenti valutati
-            utenti_collection.updateOne({email: data.email}, {$push: {
-                valutato: valutazione.mailDocente
-            }});
+                        ]
+                    });
+                } 
+            }
             
             res.json({messaggio: "Valutazione inserita con successo"}).end();
         });
@@ -397,27 +477,72 @@ app.post("/stop", (req, res) => {
     }
 })
 
+app.post("/get_docenti", (req, res) => {
+    let token = req.body.token;
+
+    // Ottengo dati dal token
+    let data = verifyToken(token);
+
+    // Se token valido
+    if(data){
+        let {email, tipo} = data;
+
+        // Se non è un Admin
+        if(tipo != "A"){
+            res.json({messaggio: "Riservato all'admin", tipo: tipo}).end();
+            return;
+        }
+
+    }else{
+        res.json({messaggio: "Token scaduto o non valido"}).end();
+        return;
+    } 
+
+    mongodb.connect()
+        .then(async (mongoclient) => {
+            let domande_collection = mongoclient.db().collection("Utenti");
+
+            // Lista di tutti i docenti
+            let lista_domande = await domande_collection.find({tipo: "D"}, {projection: {nome: 1, cognome: 1, email: 1, _id: 0}}).toArray();
+            mongoclient.close();
+
+            res.json(lista_domande);
+            res.end();
+        });
+})
+
 app.post("/view_docente", (req, res) => {
     let token = req.body.token;
 
     let data = verifyToken(token);
 
     // Se token è valido ed è un docente
-    if(data && data.tipo == "D"){ 
+    if(data && (data.tipo == "D" || data.tipo == "A")){ 
+        let email_doc = "";
+
+        // Se è un admin invierà anche l'email del docente da visualizzare
+        if(data.tipo == "A"){
+            email_doc = req.body.email;
+        }else{
+            // Se è un docente si prende direttamente il suo emil
+            email_doc = data.email;
+        }
+
         mongodb.connect()
             .then(async(mongoclient) => {
                 let utenti_collection = mongoclient.db().collection("Utenti");
                 let voti_collection = mongoclient.db().collection("Voti");
                 let domande_collection = mongoclient.db().collection("Domande");
 
-                // Tutte le domande del db
+                // Tutte le domande del db 
                 let domande = await domande_collection.find({}).toArray();
 
                 // Il docente interessato
-                let docente = await utenti_collection.findOne({email: data.email});
+                let docente = await utenti_collection.findOne({email: email_doc});
+ 
                 // I voti del docente
-                let voti = await voti_collection.findOne({email: data.email});
-
+                let voti = await voti_collection.findOne({email: email_doc});
+ 
                 // Se è stato valutato
                 if(voti){
                     // Per ogni materia che il docente insegna ed è stato valutato dai studenti
@@ -443,15 +568,20 @@ app.post("/view_docente", (req, res) => {
 
                     res.json(voti).end();
                 }else{
-                    res.json({messaggio: "Non hai nessun votazione"}).end();
+                    if(data.tipo == "D"){
+                        res.json({messaggio: "Non hai nessun votazione"}).end();
+                    }else{
+                        res.json({messaggio: "Non ha nessun votazione"}).end();
+                    }
                 }
             });
-    }else{  
+    }
+    else{   
         res.sendStatus(404).end();
     }
 })
  
-app.post("/carica_dati", (req, res) => {
+app.get("/carica_dati", (req, res) => {
     let cred = require("./json/credenziali.json");
     let utenti = require("./json/utenti.json");
     let domande = require("./json/domande.json");
@@ -461,7 +591,9 @@ app.post("/carica_dati", (req, res) => {
             let domande_collection = mongoclient.db().collection("Domande");
             let utenti_collection = mongoclient.db().collection("Utenti");
             let cred_collection = mongoclient.db().collection("Credenziali");
+            let config_collection = mongoclient.db().collection("Config");
 
+            await config_collection.deleteMany({});
             await domande_collection.deleteMany({});
             await utenti_collection.deleteMany({});
             await cred_collection.deleteMany({});
@@ -469,6 +601,7 @@ app.post("/carica_dati", (req, res) => {
             domande_collection.insertMany(domande);
             utenti_collection.insertMany(utenti);
             cred_collection.insertMany(cred);
+            config_collection.insertOne({open: false});
 
             res.json({messaggio: "Dati inseriti con successo"}).end();
         });

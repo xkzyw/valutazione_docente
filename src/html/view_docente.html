@@ -5,14 +5,18 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Document</title>
     <link href="./bootstrap/css/bootstrap.min.css" rel="stylesheet"></link>
+    <script src="./config.js"></script>
 
 </head>
 <body>
     <script>
         let token = sessionStorage.getItem(TOKEN_NAME);
         let content = null;
+        let doc = false;
+        let tipo = null;
+        let index = 0;
 
-        fetch(`http://${IP}:${PORT}/view_docente`, {
+        fetch(`http://${IP}:${PORT}/get_docenti`, {
             method: "POST",
             body: JSON.stringify({
                 token: token
@@ -23,42 +27,138 @@
         })
         .then((val) => val.json())
         .then((data) => {
-            content = data;
-            matChanged();
-        });
+            tipo = data.tipo;
+            
+            if(tipo == "D"){
+                doc = true;
+                viewDocente();
+            }
+            else if(tipo == "S")
+            {
+                alert("Riservato all'admin e docenti");
+                window.location.replace("./index.html")
+                return;
+            }else{
+                let body = document.querySelector("body");
+
+                body.innerHTML = "";
+                body.innerHTML = `<center class="my-4"><h3>Benvenuto admin</h3></center>`;
+
+                let options = "";
+
+                data.forEach((val) => {
+                    options += `<option value='${val.email}'>${val.cognome} ${val.nome}</option>`;
+                });
+
+                body.innerHTML += `<center>
+                    <select id="sel-email" onchange='viewDocente()'>
+                        ${options}
+                    </select>
+                </center>`;  
+                viewDocente();
+            }
+        })
+
+        function viewDocente(){
+            let doc_email;
+
+            if(!tipo){
+                 doc_email = document.querySelector("#sel-email").selectedOptions[0].value;
+            }else{
+                doc_email = null;
+            }
+
+            fetch(`http://${IP}:${PORT}/view_docente`, {
+                method: "POST",
+                body: JSON.stringify({
+                    token: token,
+                    email: doc_email
+                }),
+                headers: {
+                    "Content-Type": "application/json"
+                }
+            })
+            .then((val) => {
+                if(val.status == 404){
+                    document.querySelector("body").innerHTML = "Not found";
+                    return;
+                }
+                return val.json()
+            })
+            .then((data) => {
+                if(!data){
+                    return;
+                }
+
+                content = data;
+
+                if(doc){
+                    let body = document.querySelector("body");
+
+                    body.innerHTML = "";
+                    body.innerHTML = `<center class="my-4"><h3>${content.email}</h3></center>`;
+                        
+                }
+                matChanged();
+
+            });
+        }
 
         function matChanged(){
+            if(document.querySelector("#mat-sel")){
+                index = document.querySelector("#mat-sel").selectedOptions[0].index;
+            }
+
             let body = document.querySelector("body");
 
-            body.innerHTML = "";
-            body.innerHTML = `<center class="my-4"><h3>${content.email}</h3></center>`;
-            
+            if(!document.querySelector("#content")){
+                body.innerHTML += "<div id='content'></div>";
+            }
+
+            let cont = document.querySelector("#content");
+
+            cont.innerHTML = "";
+
             let materie_option = ""
-            content.materie.forEach((mat) => {
-                materie_option += `<option>${mat.nome}</option>`
-            });
 
-            body.innerHTML += `<center>
-                <select id='mat-sel' onchange='matChanged()'>
-                    ${materie_option}   
-                </select>
-            </center>`
+            if(content.materie){
+                content.materie.forEach((mat) => {
+                    materie_option += `<option>${mat.nome}</option>`
+                });
 
-            let opt = document.querySelector("#mat-sel").selectedOptions[0].value;
+                cont.innerHTML += `<center>
+                    <select id='mat-sel' onchange='matChanged()'>
+                        ${materie_option}   
+                    </select>
+                </center>`;
 
-            let mat = content.materie.filter((m) => m.nome == opt)[0];
+                if(index){
+                    document.querySelector('#mat-sel').querySelectorAll('option')[index].selected = 'selected';
+                }
 
-            body.innerHTML = body.innerHTML + `<div class="d-flex my-4 justify-content-between">
-                    <div class="col-11"><h3>Descrizione</h3></div>
-                    <div class="col-1"><h3>Media</h3></div>
-                </div>`;
+                let opt = document.querySelector("#mat-sel").selectedOptions[0].value;
 
-            mat.valutazioni.forEach((val) => {
-                body.innerHTML = body.innerHTML + `<div class="d-flex my-4 justify-content-between">
-                    <div class="col-11">${val.domanda}</div>
-                    <div class="col-1">${val.voto}</div>
-                </div>`;
-            })
+                let mat = content.materie.filter((m) => m.nome == opt)[0];
+
+                cont.innerHTML = cont.innerHTML + `<div class="d-flex my-4 justify-content-between">
+                        <div class="col-11"><h3>Descrizione</h3></div>
+                        <div class="col-1"><h3>Media</h3></div>
+                    </div>`;
+
+                mat.valutazioni.forEach((val) => {
+                    cont.innerHTML = cont.innerHTML + `<div class="d-flex my-4 justify-content-between">
+                        <div class="col-11">${val.domanda}</div>
+                        <div class="col-1">${val.voto}</div>
+                    </div>`;
+                })
+
+                if(index){
+                    document.querySelector('#mat-sel').querySelectorAll('option')[index].selected = 'selected';
+                }
+            }else{
+                cont.innerHTML = "Non esiste la valutazione di questo docente"
+            }
+            
         }
     </script>
 </body>

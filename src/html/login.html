@@ -7,9 +7,9 @@
     <script src="./config.js"></script>
 </head>
 <body>
-    <input type="email" id="email"/> </br>
-    <input type="password" id="password"/>
-    <input type="submit" onclick="send()" value="Send"/>
+    Email: <input type="email" id="email"/> </br>
+    Password: <input type="password" id="password"/> </br>
+    <input type="submit" onclick="send()" value="Login"/>
 
     <script>
         function send(){
@@ -28,8 +28,14 @@
             }).then((val) => {
                 return val.json();
             }).then((data) => {
-                sessionStorage.setItem(TOKEN_NAME, data.token);
-                window.location.replace("./index.html")
+                if(data.messaggio){
+                    alert(data.messaggio);
+                }else{
+                    alert("Login cono successo");
+                    sessionStorage.setItem(TOKEN_NAME, data.token);
+                    window.location.replace("./index.html")
+                }
+
             });
         }
     </script>

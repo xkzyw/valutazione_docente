@@ -24,7 +24,7 @@
         // Id di tutte le domande
         let d = [];
 
-        fetch(`http://${IP}:${PORT}/get_docenti`, {
+        fetch(`http://${IP}:${PORT}/get_docenti_classe`, {
             method: "POST",
             body: JSON.stringify({
                 token: token
@@ -48,6 +48,11 @@
             // Intestazione
             body.innerHTML = "";
             body.innerHTML = `<center class="my-4"><h3>${data.classe} - ${data.email}</h3></center>`;
+
+            if(data.docenti == 0){
+                body.innerHTML += `<center class="my-4"><h3>Tutti i docenti sono stati votati</h3></center>`;
+                return;
+            }
 
             data.docenti.forEach((val) => {
                 let mat_options = "";
@@ -77,7 +82,13 @@
 
             vmat = document.querySelector(`[name='mat-${dmail}']`).selectedOptions[0].value;
 
-            fetch(`http://${IP}:${PORT}/get_domande`).then((content) => content.json())
+            fetch(`http://${IP}:${PORT}/get_domande`,{
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({token: token})
+            }).then((content) => content.json())
                 .then((data) => {
                     body.innerHTML = "";
                     body.innerHTML = `<center class="my-4"><h3>${classe} - ${smail}</h3></center>
@@ -125,12 +136,10 @@
                     token: token,
                     mailDocente: dmail,
                     mailStudente: smail,
-                    materie: [
-                        {
-                            nomeMateria: vmat,
-                            valutazioni: valutazioni
-                        }
-                    ]
+                    materia: {
+                        nomeMateria: vmat,
+                        valutazioni: valutazioni
+                    }
                 }),
                 headers: { 
                     "Content-Type": "application/json"
