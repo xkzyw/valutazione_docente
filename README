@@ -17,6 +17,9 @@ attraverso il commando:
 Dopodiche' si può avviare il server con il seguente comando:
 	node src/main.js
 
+Si consiglia di caricare tutti i dati neccessari per la funzionamento del server
+attraverso l'endpoint /carica_dati.
+
 Mentre il client di prova si trova nella cartella src/html.
 Si consiglia di avviare il client dal file index.html.
 Per avviare il client è possibile aprire direttamente il file html
@@ -30,11 +33,11 @@ basti adeguare il proprio client con il documentazione dell'app
 
 Tutte le funzionalità del server sono elencate nella documentzione soprastante,
 eccetto alcuni modifiche:
-	- API /carica_studenti e /carica_docenti sono stati inseriti in un
+	- Endpoint /carica_studenti e /carica_docenti sono stati inseriti in un
 		unico API chiamato /carica_dati, che oltre a caricare i dati di 
 		studenti e docenti mette anche i credenziali di prova nel database
-	- API /start_stop_valutazioni viene diviso in /start e /stop,
-	- API /admin_console quindi restituisce url dell'endpoit di /carica_dati
+	- Endpoint /start_stop_valutazioni viene diviso in /start e /stop,
+	- Endpoint /admin_console quindi restituisce url dell'endpoit di /carica_dati
 		e /start o /stop a seconda di votazione sia aperta o non
 	- Viene implementato anche la votazione per la materia del docente
 		che ha più di un insegnamento di materia per classe, sia docente

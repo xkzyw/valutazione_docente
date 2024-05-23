@@ -13,8 +13,11 @@ const { MongoClient } = require("mongodb");
 const config = require("./config.json");
 const jwt = require("jsonwebtoken");
 const cors = require("cors");
+const path = require('path')
 
 const app = express();
+
+app.use('/', express.static(path.join(__dirname, 'html')))
 
 const LISTEN_PORT = config.port;
 
@@ -533,46 +536,54 @@ app.post("/view_docente", (req, res) => {
                 let utenti_collection = mongoclient.db().collection("Utenti");
                 let voti_collection = mongoclient.db().collection("Voti");
                 let domande_collection = mongoclient.db().collection("Domande");
+                let config_collection = mongoclient.db().collection("Config");
 
-                // Tutte le domande del db 
-                let domande = await domande_collection.find({}).toArray();
+                // Configurazione del app nel db
+                let config_param = await config_collection.findOne({});
 
-                // Il docente interessato
-                let docente = await utenti_collection.findOne({email: email_doc});
- 
-                // I voti del docente
-                let voti = await voti_collection.findOne({email: email_doc});
- 
-                // Se è stato valutato
-                if(voti){
-                    // Per ogni materia che il docente insegna ed è stato valutato dai studenti
-                    voti.materie = voti.materie.map((val) => {
-                        val.valutazioni = val.valutazioni.map((valutazione) => {
-                            // La descrizione della domanda che corrisponde al id_domanda
-                            let domanda = domande.filter((dom) => dom.id == valutazione.id_domanda)[0];
-                            // Modifica la struttura della valutazione tale che il {voto} diventa la media dei voti
-                            // e la {domanda} diventa la descrizione
-                            return {
-                                voto: valutazione.voto.reduce((acc, curr) => acc + curr) / valutazione.voto.length,
-                                domanda: domanda.domanda
-                            }
-                        })
+                if(!config_param.open){
+                    // Tutte le domande del db 
+                    let domande = await domande_collection.find({}).toArray();
 
-                        return val;
-                    });
+                    // Il docente interessato
+                    let docente = await utenti_collection.findOne({email: email_doc});
+    
+                    // I voti del docente
+                    let voti = await voti_collection.findOne({email: email_doc});
+    
+                    // Se è stato valutato
+                    if(voti){
+                        // Per ogni materia che il docente insegna ed è stato valutato dai studenti
+                        voti.materie = voti.materie.map((val) => {
+                            val.valutazioni = val.valutazioni.map((valutazione) => {
+                                // La descrizione della domanda che corrisponde al id_domanda
+                                let domanda = domande.filter((dom) => dom.id == valutazione.id_domanda)[0];
+                                // Modifica la struttura della valutazione tale che il {voto} diventa la media dei voti
+                                // e la {domanda} diventa la descrizione
+                                return {
+                                    voto: parseFloat(valutazione.voto.reduce((acc, curr) => acc + curr) / valutazione.voto.length).toFixed(2),
+                                    domanda: domanda.domanda
+                                }
+                            })
 
-                    // Informazioni aggiuntive
-                    voti.cognome = docente.cognome;
-                    voti.nome = docente.nome;
-                    voti.email = docente.email;
+                            return val;
+                        });
 
-                    res.json(voti).end();
-                }else{
-                    if(data.tipo == "D"){
-                        res.json({messaggio: "Non hai nessun votazione"}).end();
+                        // Informazioni aggiuntive
+                        voti.cognome = docente.cognome;
+                        voti.nome = docente.nome;
+                        voti.email = docente.email;
+
+                        res.json(voti).end();
                     }else{
-                        res.json({messaggio: "Non ha nessun votazione"}).end();
+                        if(data.tipo == "D"){
+                            res.json({messaggio: "Non hai nessun votazione"}).end();
+                        }else{
+                            res.json({messaggio: "Non ha nessun votazione"}).end();
+                        }
                     }
+                }else{
+                    res.json({messaggio: "Valutazione non concluse"}).end();
                 }
             });
     }
